@@ -1,0 +1,41 @@
+version: '3.5'
+
+services:
+  proxy:
+    container_name: proxy
+    build: ./app
+    restart: always
+    ports:
+      - 80:80
+      - 443:443
+    labels:
+      com.github.jrcs.letsencrypt_nginx_proxy_companion.nginx_proxy: "true"
+    volumes:
+      - /srv/docker/letsencrypt/certs:/etc/nginx/certs
+      - /srv/docker/letsencrypt/html:/usr/share/nginx/html
+      - /srv/docker/proxy/vhost.d/etc/nginx/vhost.d:ro
+      - /var/run/docker.sock:/tmp/docker.sock:ro
+    networks:
+      - external-proxy-net
+
+  letsencrypt-companion:
+    image: jrcs/letsencrypt-nginx-proxy-companion
+    restart: always
+    # use the LE sandbox API for testing to avoid rate limits
+    environment:
+     - ACME_CA_URI=https://acme-staging.api.letsencrypt.org/directory
+    volumes:
+      - /srv/docker/letsencrypt/certs:/etc/nginx/certs
+      - /srv/docker/letsencrypt/html:/usr/share/nginx/html
+      # put your custom Virtual Host files here
+      - /srv/docker/proxy/vhost.d:/etc/nginx/vhost.d:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - external-proxy-net
+    depends_on:
+      - proxy      
+
+networks:
+  external-proxy-net:
+    name: external-proxy-net
+    driver: bridge
